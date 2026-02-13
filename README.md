@@ -40,8 +40,9 @@ I utilized Dimensional Modeling (Star Schema) for the final marts to ensure comp
 2. Incremental Strategy: fct_orders is configured as incremental. In a real-world scenario, order tables grow indefinitely. This strategy processes only new data (based on order_date), significantly reducing compute costs.
 3. SCD Type 2 (Snapshots): Implemented on the products table to track cost changes over time, preserving historical accuracy for revenue reporting.
 4. Assumptions:
-Cost Calculation: Raw data lacked a 'cost' column in some versions, so a 60% standard cost model was applied in mart_product_performance.
 Currency: All monetary values are assumed to be in USD.
+
+---
 
 ## 3. Setup & Installation
 
@@ -53,7 +54,7 @@ Currency: All monetary values are assumed to be in USD.
 
 1. Clone the Repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/nahushamane/ecommerce-analytics-dbt.git
 cd ecommerce-analytics-dbt
 ```
 
@@ -86,10 +87,12 @@ dbt docs generate
 dbt docs serve
 ```
 
+---
+
 ## 4. Analytical Models (Marts)
 
 1. Customer Lifetime Value (dim_customers)
-Provides a 360-degree view of customers, including lifetime revenue, order counts, and segmentation.
+- Provides a 360-degree view of customers, including lifetime revenue, order counts, and segmentation.
 
 2. Product Performance (mart_product_performance)
 - Aggregates sales by product to calculate:
@@ -98,10 +101,12 @@ Provides a 360-degree view of customers, including lifetime revenue, order count
 - Profit Margin: (Profit / Revenue)
 
 3. Monthly Revenue Trends (mart_monthly_revenue)
-Time-series aggregation for executive dashboards showing Monthly Active Users (MAU) and Revenue Growth.
+- Time-series aggregation for executive dashboards showing Monthly Active Users (MAU) and Revenue Growth.
 
 4. Orders Fact (fct_orders)
-The central transactional table linking customers, products, and return status.
+- The central transactional table linking customers, products, and return status.
+
+---
 
 ## 5. Sample Analysis & Output
 
@@ -199,6 +204,8 @@ The central transactional table linking customers, products, and return status.
 |  2023-05-01 |           59 |               39 |      6,941.99 |        117.661… |
 |  2023-06-01 |           58 |               38 |      6,780.50 |        116.905… |
 
+---
+
 ## 6. Testing & Quality Assurance
 
 Data quality is enforced via `dbt test`:
@@ -215,6 +222,8 @@ Data quality is enforced via `dbt test`:
 ### 3. Source Freshness
 * Configured in `sources.yml` to warn if data is older than 24 hours, ensuring the pipeline runs on fresh data.
 
+---
+
 ## 7. Advanced Features & Analysis
 
 This project implements several advanced analytics engineering patterns:
@@ -226,21 +235,23 @@ This project implements several advanced analytics engineering patterns:
 
 ---
 
-## 8. Reflection & Future Improvements
+## 8. Custom Macros & Packages
+
+### `cents_to_dollars.sql`
+* **Purpose:** Automates the conversion of currency stored as integers (cents) into decimals (dollars).
+* **Usage:** `{{ cents_to_dollars('column_name') }}`
+
+---
+
+## 9. Reflection & Future Improvements
 
 **Time Taken:** Approximately 4-5 hours.
 
 **Challenges:**
 1.  **Schema Evolution:** The `raw_returns` schema linked to `order_item_id` rather than `order_id`, requiring a refactor of the intermediate join logic to ensure accurate fan-out handling.
-2.  **Incremental Logic:** ensuring the `is_incremental()` macro correctly handled late-arriving data without duplicating records.
+2.  **Incremental Logic:** ensuring the `is_incremental()` macro correctly handles late-arriving data without duplicating records.
 
 **Future Improvements:**
 1.  **Orchestration:** Implement a GitHub Actions workflow to run `dbt run` on every Pull Request (CI/CD).
 2.  **Data Quality:** Add `dbt-expectations` package for more statistical testing (e.g., expecting row counts to be within a range).
 3.  **Visualization:** Connect a lightweight BI tool like Metabase or Streamlit to the DuckDB file for live charting.
-
-## 9. Custom Macros & Packages
-
-### `cents_to_dollars.sql`
-* **Purpose:** Automates the conversion of currency stored as integers (cents) into decimals (dollars).
-* **Usage:** `{{ cents_to_dollars('column_name') }}`
