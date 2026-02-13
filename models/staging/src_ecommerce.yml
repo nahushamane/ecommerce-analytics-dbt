@@ -2,10 +2,17 @@ version: 2
 
 sources:
   - name: ecommerce
-    schema: main # DuckDB default schema
+    schema: main
+    # Freshness check: Warn if data is older than 24 hours, Error if older than 7 days
+    freshness:
+      warn_after: {count: 24, period: hour}
+      error_after: {count: 7, period: day}
+    loaded_at_field: order_date # Only works for tables with timestamps
+    
     tables:
       - name: raw_users
       - name: raw_products
       - name: raw_orders
+        loaded_at_field: order_date # Specific check for orders
       - name: raw_order_items
       - name: raw_returns

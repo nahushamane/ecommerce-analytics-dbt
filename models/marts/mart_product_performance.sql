@@ -22,22 +22,22 @@ select
     category,
     sum(quantity) as total_quantity_sold,
     sum(item_sale_amount) as total_revenue,
-    sum(item_cost_amount) as total_cost,
-    (sum(item_sale_amount) - sum(item_cost_amount)) as total_profit,
     sum(returned_qty) as total_returns,
     
     -- Return Rate
     case 
         when sum(quantity) = 0 then 0
-        else round(sum(returned_qty)::numeric / sum(quantity), 4)
+        else round(sum(returned_qty)::numeric / sum(quantity), 3)
     end as return_rate,
+
+    -- Gross Profit
+    (sum(item_sale_amount) - sum(item_cost_amount)) as gross_profit,
 
     -- Profit Margin
     case
         when sum(item_sale_amount) = 0 then 0
-        else round((sum(item_sale_amount) - sum(item_cost_amount))::numeric / sum(item_sale_amount), 4)
+        else round((sum(item_sale_amount) - sum(item_cost_amount))::numeric / sum(item_sale_amount), 3)
     end as profit_margin
 
 from joined
 group by 1, 2, 3
-order by total_revenue desc
