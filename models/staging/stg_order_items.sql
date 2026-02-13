@@ -2,12 +2,12 @@ with source as (
     select * from {{ source('ecommerce', 'raw_order_items') }}
 ),
 renamed as (
-    select 
+    select
         order_item_id,
         order_id,
         product_id,
         quantity,
-        price
+        CAST(price AS NUMERIC) as price_per_unit
     from source
 )
 select * from renamed

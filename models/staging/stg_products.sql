@@ -5,9 +5,9 @@ renamed as (
     select
         product_id,
         product_name,
-        category as product_category,
+        category,
         supplier_id,
-        cost as product_cost
+        CAST(cost AS NUMERIC) as product_cost
     from source
 )
 select * from renamed

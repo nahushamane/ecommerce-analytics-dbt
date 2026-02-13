@@ -1,74 +1,43 @@
-{{ config(
-    materialized='table'
-) }}
-
-with order_items as (
+with items as (
     select * from {{ ref('int_order_items_joined') }}
 ),
-
-orders as (
-    select * from {{ ref('stg_orders') }}
-),
-
-products as (
-    select * from {{ ref('stg_products') }}
-),
-
 returns as (
     select * from {{ ref('stg_returns') }}
 ),
-
-joined_data as (
+joined as (
     select
-        items.product_id,
-        products.product_name, -- Assuming column exists in stg_products
-        products.category,
-        items.quantity,
-        items.total_item_amount as revenue,
-        -- Simulate cost if not present in raw data (Using 60% of price as cost)
-        (items.quantity * items.price_per_unit * 0.6) as cost,
-        case when ret.return_id is not null then 1 else 0 end as is_returned,
-        case when ret.return_id is not null then items.quantity else 0 end as returned_quantity
-    from order_items as items
-    left join orders on items.order_id = orders.order_id
-    left join products on items.product_id = products.product_id
-    left join returns as ret on items.order_id = ret.order_id
-    where orders.order_status = 'completed' -- Only look at completed orders for performance
-),
-
-aggregated as (
-    select
-        product_id,
-        product_name,
-        category,
-        sum(quantity) as total_quantity_sold,
-        sum(revenue) as total_revenue,
-        sum(cost) as total_cost,
-        sum(returned_quantity) as total_returns
-    from joined_data
-    group by 1, 2, 3
+        i.product_id,
+        i.product_name,
+        i.category,
+        i.quantity,
+        i.item_sale_amount,
+        i.item_cost_amount,
+        CASE WHEN r.return_id IS NOT NULL THEN i.quantity ELSE 0 END as returned_qty
+    from items i
+    left join returns r on i.order_item_id = r.order_item_id
 )
-
 select
     product_id,
     product_name,
     category,
-    total_quantity_sold,
-    total_revenue,
-    total_returns,
-    -- Return Rate: Returns / Sold
+    sum(quantity) as total_quantity_sold,
+    sum(item_sale_amount) as total_revenue,
+    sum(item_cost_amount) as total_cost,
+    (sum(item_sale_amount) - sum(item_cost_amount)) as total_profit,
+    sum(returned_qty) as total_returns,
+    
+    -- Return Rate
     case 
-        when total_quantity_sold = 0 then 0 
-        else round(total_returns::numeric / total_quantity_sold, 3) 
+        when sum(quantity) = 0 then 0
+        else round(sum(returned_qty)::numeric / sum(quantity), 4)
     end as return_rate,
-    
-    -- Gross Profit: Revenue - Cost
-    (total_revenue - total_cost) as gross_profit,
-    
-    -- Profit Margin: (Revenue - Cost) / Revenue
-    case 
-        when total_revenue = 0 then 0
-        else round((total_revenue - total_cost)::numeric / total_revenue, 3) 
+
+    -- Profit Margin
+    case
+        when sum(item_sale_amount) = 0 then 0
+        else round((sum(item_sale_amount) - sum(item_cost_amount))::numeric / sum(item_sale_amount), 4)
     end as profit_margin
-from aggregated
+
+from joined
+group by 1, 2, 3
 order by total_revenue desc
