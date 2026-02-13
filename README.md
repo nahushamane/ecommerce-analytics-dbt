@@ -17,10 +17,10 @@ The project demonstrates:
 The architecture follows the Medallion Architecture pattern, ensuring that business logic is abstracted into the Intermediate layer, keeping the Marts clean and performant for BI tools.
 ```mermaid
 graph LR
-    A[Raw Seeds (CSV)] --> B[Staging Layer (Clean/Cast)]
-    B --> C[Intermediate Layer (Join/Agg)]
-    C --> D[Marts Layer (Business Logic)]
-    D --> E[BI / Reporting]
+    A["Raw Seeds (CSV)"] --> B["Staging Layer (Clean/Cast)"]
+    B --> C["Intermediate Layer (Join/Agg)"]
+    C --> D["Marts Layer (Business Logic)"]
+    D --> E["BI / Reporting"]
 ```
 
 ### Tech Stack
@@ -201,25 +201,45 @@ The central transactional table linking customers, products, and return status.
 
 ## 6. Testing & Quality Assurance
 
-### Data quality is enforced via dbt test:
-1. Generic Tests: unique, not_null constraints on primary keys (IDs).
-2. Relationship Tests: Ensuring user_id in orders exists in the users table.
-3. Singular Tests: assert_total_revenue_positive.sql validates that no order has a negative revenue value, protecting against data corruption.
+Data quality is enforced via `dbt test`:
 
-## 7. Reflection & Future Improvements
+### 1. Generic Tests
+* **Standard:** `unique`, `not_null` constraints on primary keys.
+* **Relationships:** Referential integrity checks (e.g., `user_id` in orders exists in users).
+* **Custom Generic Test:** `is_non_negative` (defined in `tests/generic/`) ensures financial columns like `total_amount` never contain negative values where invalid.
 
-Time Taken: Approximately 4 hours.
+### 2. Singular Tests (Business Logic)
+* `assert_total_revenue_positive.sql`: Validates that total revenue is mathematically consistent.
+* `assert_return_date_after_order_date.sql`: **Logic Validation** ensuring that a return cannot happen before the original order date.
 
-### Challenges:
-1. Initial schema mismatch in raw_returns required refactoring the join logic in the intermediate layer.
-2. Ensuring the incremental logic for fct_orders correctly handled late-arriving data.
+### 3. Source Freshness
+* Configured in `sources.yml` to warn if data is older than 24 hours, ensuring the pipeline runs on fresh data.
 
-### Future Improvements:
-1. Orchestration: Implement a GitHub Actions workflow to run dbt run on every Pull Request (CI/CD).
-2. Data Quality: Add dbt-expectations package for more statistical testing (e.g., expecting row counts to be within a range).
-3. Visualization: Connect a lightweight BI tool like Metabase or Streamlit to the DuckDB file for live charting.
+## 7. Advanced Features & Analysis
 
-## 8. Custom Macros & Packages
+This project implements several advanced analytics engineering patterns:
+
+* **SCD Type 2 Snapshots:** Tracks changes in product costs over time in the `snapshots/` directory.
+* **Incremental Models:** `fct_orders` processes only new data to optimize performance on large datasets.
+* **Custom Macros:** `cents_to_dollars` logic abstracted for reusability.
+* **Jinja Analysis:** An analysis file `analysis/orders_by_day_of_week.sql` demonstrates complex SQL logic that is compiled but not materialized.
+
+---
+
+## 8. Reflection & Future Improvements
+
+**Time Taken:** Approximately 4-5 hours.
+
+**Challenges:**
+1.  **Schema Evolution:** The `raw_returns` schema linked to `order_item_id` rather than `order_id`, requiring a refactor of the intermediate join logic to ensure accurate fan-out handling.
+2.  **Incremental Logic:** ensuring the `is_incremental()` macro correctly handled late-arriving data without duplicating records.
+
+**Future Improvements:**
+1.  **Orchestration:** Implement a GitHub Actions workflow to run `dbt run` on every Pull Request (CI/CD).
+2.  **Data Quality:** Add `dbt-expectations` package for more statistical testing (e.g., expecting row counts to be within a range).
+3.  **Visualization:** Connect a lightweight BI tool like Metabase or Streamlit to the DuckDB file for live charting.
+
+## 9. Custom Macros & Packages
 
 ### `cents_to_dollars.sql`
 * **Purpose:** Automates the conversion of currency stored as integers (cents) into decimals (dollars).
